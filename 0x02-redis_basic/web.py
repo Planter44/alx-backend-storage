@@ -1,38 +1,32 @@
 #!/usr/bin/env python3
-'''Web.py module
-'''
+"""Web.py module.
+"""
 import redis
 import requests
 from functools import wraps
 from typing import Callable
 
-
-redis_store = redis.Redis()
-'''The module-level Redis instance.
-'''
+redis_connection = redis.Redis()
 
 
-def data_cacher(method: Callable) -> Callable:
-    '''Caches the output of fetched data.
-    '''
+def data_cache(method: Callable) -> Callable:
+    """it caches the output of the fetched data"""
+
     @wraps(method)
-    def invoker(url) -> str:
-        '''The wrapper function for caching the output.
-        '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
+    def wrapper(url) -> str:
+        """wrapper function"""
+        redis_connection.incr(f"count:{url}")
+        output = redis_connection.get(f"output:{url}")
+        if output:
+            return output.decode('utf-8')
+        output = method(url)
+        redis_connection.set(f"count:{url}", 0)
+        redis_connection.setex(f"output:{url}", 10, output)
+        return output
+    return wrapper
 
 
-@data_cacher
+@data_cache
 def get_page(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response,
-    and tracking the request.
-    '''
+    """returns content of a url after caching"""
     return requests.get(url).text
